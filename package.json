@@ -11,8 +11,7 @@
     "@telemetryos/sdk": "^1.4.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router": "^7.9.1",
-    "sdk": "link:../../Library/pnpm/global/5/node_modules/@telemetryos/sdk"
+    "react-router": "^7.9.1"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
