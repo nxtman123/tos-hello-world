@@ -7,7 +7,7 @@ export function Render() {
   const [subtitle, setSubtitle] = useState('')
 
   const subscribeSubtitleEffect = () => {
-    store().instance.subscribe<string>('subtitle', (value) => {
+    store().instance.subscribe('subtitle', (value) => {
       const fallbackSubtitle = "Change this line in settings ⚙️ ↗️"
       setSubtitle(value ?? fallbackSubtitle)
     }).catch(console.error)
