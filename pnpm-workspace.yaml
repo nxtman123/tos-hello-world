@@ -1,4 +1,0 @@
-overrides:
-  '@telemetryos/cli': link:../../Library/pnpm/global/5/node_modules/@telemetryos/cli
-  '@telemetryos/sdk': link:../Neo-Application-SDK/packages/sdk
-  sdk: link:../../Library/pnpm/global/5/node_modules/@telemetryos/sdk
