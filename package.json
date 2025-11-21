@@ -2,7 +2,7 @@
   "name": "kurtis-hello-world",
   "version": "0.1.0",
   "description": "Hi World!",
-  "author": "",
+  "author": "Kurtis",
   "scripts": {
     "dev": "tos serve",
     "build": "tsc && vite build"
