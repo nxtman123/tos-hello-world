@@ -1,61 +1,35 @@
 import './Settings.css'
-
 import { useEffect, useState } from 'react'
 import { store } from '@telemetryos/sdk'
 
 export function Settings() {
-  const [subtitleText, setSubtitleText] = useState('')
-  const [weatherCity, setWeatherCity] = useState('')
-  const [isLoadingValue, setIsLoadingValue] = useState(true)
+  const [city, setCity] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
-  const fetchSubtitleEffect = () => {
+  useEffect(() => {
     (async () => {
-      let subtitle = await store().instance.get<string>('subtitle')
-      if (subtitle !== undefined) {
-        setSubtitleText(subtitle)
+      let savedCity = await store().instance.get<string>('city')
+      if (savedCity !== undefined) {
+        setCity(savedCity)
       } else {
-        const defaultSubtitle = "Change this line in settings ⚙️ ↗️"
-        await store().instance.set('subtitle', defaultSubtitle)
-        setSubtitleText(defaultSubtitle)
+        await store().instance.set('city', 'Vancouver')
+        setCity('Vancouver')
       }
-
-      let city = await store().instance.get<string>('weatherCity')
-      if (city !== undefined) {
-        setWeatherCity(city)
-      } else {
-        const defaultCity = "New York"
-        await store().instance.set('weatherCity', defaultCity)
-        setWeatherCity(defaultCity)
-      }
-
-      setIsLoadingValue(false)
+      setIsLoading(false)
     })().catch(console.error)
-  }
+  }, [])
 
-  useEffect(fetchSubtitleEffect, [])
-
-  const handleSubtitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSubtitleText(event.target.value)
-    store().instance.set('subtitle', event.target.value).catch(console.error)
-  }
-
-  const handleWeatherCityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setWeatherCity(event.target.value)
-    store().instance.set('weatherCity', event.target.value).catch(console.error)
+  const handleCityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCity(event.target.value)
+    store().instance.set('city', event.target.value).catch(console.error)
   }
 
   return (
     <div className="settings">
       <div className="form-field">
-        <div className="form-field-label">Subtitle Text</div>
+        <div className="form-field-label">City</div>
         <div className="form-field-frame">
-          <input className="form-field-input" type="text" value={subtitleText} onChange={handleSubtitleChange} disabled={isLoadingValue} />
-        </div>
-      </div>
-      <div className="form-field">
-        <div className="form-field-label">Weather City</div>
-        <div className="form-field-frame">
-          <input className="form-field-input" type="text" value={weatherCity} onChange={handleWeatherCityChange} disabled={isLoadingValue} />
+          <input className="form-field-input" type="text" value={city} onChange={handleCityChange} disabled={isLoading} />
         </div>
       </div>
     </div>
