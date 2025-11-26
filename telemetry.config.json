@@ -1,5 +1,6 @@
 {
   "name": "kurtis-hello-world",
+  "thumbnailPath": "assets/tos-app.svg",
   "version": "0.1.0",
   "mountPoints": {
     "render": "/render",
