@@ -7,7 +7,7 @@ export function Settings() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    (async () => {
+    const effect = async () => {
       let savedCity = await store().instance.get<string>('city')
       if (savedCity !== undefined) {
         setCity(savedCity)
@@ -16,7 +16,8 @@ export function Settings() {
         setCity('Vancouver')
       }
       setIsLoading(false)
-    })().catch(console.error)
+    }
+    effect().catch(console.error)
   }, [])
 
   const handleCityChange = (event: React.ChangeEvent<HTMLInputElement>) => {

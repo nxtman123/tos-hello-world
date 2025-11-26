@@ -17,23 +17,30 @@ export function Render() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
 
   useEffect(() => {
-    const fetchWeather = async (city: string) => {
-      const conditions = await weather().getConditions({ city, units: 'metric' })
-      setWeatherData({
-        city: conditions.CityLocalized,
-        temp: conditions.Temp,
-        conditions: conditions.WeatherText,
-        humidity: conditions.RelativeHumidity,
-        windSpeed: conditions.WindSpeed,
-        windDirection: conditions.WindDirectionEnglish,
-        visibility: conditions.Visibility,
-        pressure: conditions.Pressure,
-      })
+    const fetchWeather = async (city?: string) => {
+      if (city) {
+        weather().getConditions({ city, units: 'metric' }).then((conditions) => {
+          setWeatherData({
+            city: conditions.CityLocalized,
+            temp: conditions.Temp,
+            conditions: conditions.WeatherText,
+            humidity: conditions.RelativeHumidity,
+            windSpeed: conditions.WindSpeed,
+            windDirection: conditions.WindDirectionEnglish,
+            visibility: conditions.Visibility,
+            pressure: conditions.Pressure,
+          })
+        })
+      }
     }
 
-    store().instance.subscribe<string>('city', (city) => {
-      if (city) fetchWeather(city).catch(console.error)
-    }).catch(console.error)
+    store().instance.subscribe<string>('city', fetchWeather).catch(console.error)
+
+    fetchWeather('Vancouver')
+
+    return ()=> {
+      store().instance.unsubscribe('city', fetchWeather).catch(console.error)
+    }
   }, [])
 
   if (!weatherData) {
