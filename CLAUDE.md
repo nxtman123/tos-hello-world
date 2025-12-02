@@ -218,11 +218,14 @@ export default function Render() {
   useEffect(() => {
     store().instance.get<Config>('config').then(setConfig);
 
-    const unsubscribe = store().instance.subscribe('config', (newConfig: Config) => {
-      setConfig(newConfig);
-    });
+    const handler = (newConfig: Config | undefined) => {
+      if (newConfig) setConfig(newConfig);
+    };
+    store().instance.subscribe('config', handler);
 
-    return () => unsubscribe();
+    return () => {
+      store().instance.unsubscribe('config', handler);
+    };
   }, []);
 
   // Fetch weather when config changes
@@ -292,11 +295,11 @@ configure(applicationName: string): void
 
 **Type Signatures:**
 ```typescript
-store().application.set(key: string, value: any): Promise<boolean>
-store().application.get<T>(key: string): Promise<T | null>
-store().application.subscribe(key: string, handler: (value: any) => void): () => void
+store().application.set<T>(key: string, value: T): Promise<boolean>
+store().application.get<T>(key: string): Promise<T | undefined>
+store().application.subscribe<T>(key: string, handler: (value: T | undefined) => void): Promise<boolean>
+store().application.unsubscribe<T>(key: string, handler?: (value: T | undefined) => void): Promise<boolean>
 store().application.delete(key: string): Promise<boolean>
-store().application.keys(): Promise<string[]>
 
 // Same methods for instance, device, shared(namespace)
 ```
@@ -315,10 +318,11 @@ const logo = await store().application.get<string>('companyLogo');
 await store().instance.set('config', { city: 'NYC' });
 
 // Render subscribes
-const unsubscribe = store().instance.subscribe('config', (newConfig) => {
-  updateDisplay(newConfig);
-});
-// Later: unsubscribe();
+const handler = (newConfig) => updateDisplay(newConfig);
+await store().instance.subscribe('config', handler);
+
+// Later: unsubscribe
+await store().instance.unsubscribe('config', handler);
 ```
 
 3. **device** - This physical device only (NOT available in Settings)
@@ -339,9 +343,9 @@ store().shared('weather').subscribe('temp', (temp) => console.log(temp));
 
 **Constraints:**
 - All operations timeout after 30 seconds (throws Error)
-- Returns Promise<boolean> for set/delete (true = success)
-- Returns Promise<T | null> for get
-- subscribe() returns unsubscribe function
+- Returns `Promise<boolean>` for set/delete/subscribe/unsubscribe (true = success)
+- Returns `Promise<T | undefined>` for get
+- To unsubscribe, call `unsubscribe(key, handler)` with the same handler function
 - Device scope throws Error in Settings mount point
 
 ### Proxy API
@@ -366,15 +370,35 @@ const json = await response.json();
 ### Media API
 
 ```typescript
-media().getAllByTag(tag: string): Promise<MediaContent[]>
-media().getById(id: string): Promise<MediaContent | null>
+media().getAllFolders(): Promise<MediaFolder[]>
+media().getAllByFolderId(folderId: string): Promise<MediaContent[]>
+media().getAllByTag(tagName: string): Promise<MediaContent[]>
+media().getById(id: string): Promise<MediaContent>
 
 interface MediaContent {
   id: string;
-  url: string;
-  type: 'image' | 'video';
-  tags: string[];
-  metadata: Record<string, any>;
+  contentFolderId: string;
+  contentType: string;
+  name: string;
+  description: string;
+  thumbnailUrl: string;
+  keys: string[];
+  publicUrls: string[];
+  hidden: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MediaFolder {
+  id: string;
+  parentId: string;
+  name: string;
+  size: number;
+  default: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -383,24 +407,126 @@ interface MediaContent {
 ```typescript
 playlist().nextPage(): Promise<boolean>
 playlist().previousPage(): Promise<boolean>
-playlist().jumpToPage(index: number): Promise<boolean>
+playlist().setDuration(duration: number): Promise<boolean>  // duration in milliseconds
 ```
 
 ### Overrides API
 
 ```typescript
-overrides().setOverride(id: string): Promise<boolean>
-overrides().clearOverride(): Promise<boolean>
+overrides().setOverride(name: string): Promise<boolean>
+overrides().clearOverride(name: string): Promise<boolean>
 ```
 
-Note: Override IDs must be pre-configured in Freeform Editor.
+Note: Override names must be pre-configured in Freeform Editor.
 
 ### Platform Information
 
 ```typescript
 accounts().getCurrent(): Promise<Account>
 users().getCurrent(): Promise<User>
-devices().getCurrent(): Promise<Device>  // Render only
+devices().getInformation(): Promise<DeviceInformation>  // Render only
+
+interface DeviceInformation {
+  deviceSerialNumber: string;
+  deviceModel: string;
+  deviceManufacturer: string;
+  devicePlatform: string;
+}
+```
+
+### Environment API
+
+```typescript
+environment().getColorScheme(): Promise<'light' | 'dark' | 'system'>
+environment().subscribeColorScheme(handler: (scheme: 'light' | 'dark' | 'system') => void): void
+environment().unsubscribeColorScheme(handler: (scheme: 'light' | 'dark' | 'system') => void): void
+```
+
+**Example:**
+```typescript
+import { environment } from '@telemetryos/sdk';
+
+// Get current color scheme
+const scheme = await environment().getColorScheme();
+
+// Subscribe to color scheme changes
+environment().subscribeColorScheme((newScheme) => {
+  document.body.className = newScheme;
+});
+```
+
+### Weather API
+
+```typescript
+weather().getConditions(params: WeatherRequestParams): Promise<WeatherConditions>
+weather().getDailyForecast(params: DailyForecastParams): Promise<WeatherForecast[]>
+weather().getHourlyForecast(params: HourlyForecastParams): Promise<WeatherForecast[]>
+
+interface WeatherRequestParams {
+  city?: string;           // City name (e.g., "New York" or "London, UK")
+  postalCode?: string;     // Alternative to city
+  lat?: string;            // Latitude (if city not provided)
+  lon?: string;            // Longitude (if city not provided)
+  units?: 'imperial' | 'metric';
+  language?: string;
+}
+
+interface DailyForecastParams extends WeatherRequestParams {
+  days?: number;           // Number of days to forecast
+}
+
+interface HourlyForecastParams extends WeatherRequestParams {
+  hours?: number;          // Number of hours to forecast
+}
+```
+
+**Example:**
+```typescript
+import { weather } from '@telemetryos/sdk';
+
+// Get current conditions
+const conditions = await weather().getConditions({
+  city: 'New York',
+  units: 'imperial'
+});
+console.log(`${conditions.Temp}°F - ${conditions.WeatherText}`);
+
+// Get 5-day forecast
+const forecast = await weather().getDailyForecast({
+  city: 'London',
+  units: 'metric',
+  days: 5
+});
+```
+
+### Applications API
+
+```typescript
+applications().getAllByMountPoint(mountPoint: string): Promise<Application[]>
+applications().getByName(name: string): Promise<Application | null>
+applications().setDependencies(specifiers: string[]): Promise<{ ready: string[], unavailable: string[] }>
+
+interface Application {
+  name: string;
+  mountPoints: Record<string, { path: string }>;
+}
+```
+
+**Example:**
+```typescript
+import { applications } from '@telemetryos/sdk';
+
+// Find all apps with a specific mount point
+const widgets = await applications().getAllByMountPoint('widget');
+
+// Get a specific app by name
+const mapApp = await applications().getByName('interactive-map');
+
+// Declare dependencies before loading sub-apps
+const result = await applications().setDependencies(['app-specifier-hash']);
+if (result.ready.includes('app-specifier-hash')) {
+  // Safe to load in iframe
+}
 ```
 
 ## Hard Constraints
@@ -421,9 +547,9 @@ devices().getCurrent(): Promise<Device>  // Render only
    - Call `configure()` once in main.tsx before React renders
 
 4. **Subscription memory leaks**
-   - `subscribe()` returns unsubscribe function
-   - Must call unsubscribe on component unmount
-   - Return unsubscribe from useEffect cleanup
+   - Store a reference to your handler function
+   - Must call `unsubscribe(key, handler)` on component unmount
+   - Call unsubscribe in useEffect cleanup
 
 5. **Timeout errors**
    - All SDK operations timeout after 30 seconds
@@ -488,8 +614,11 @@ const handleAction = async () => {
 **Subscription cleanup:**
 ```typescript
 useEffect(() => {
-  const unsubscribe = store().instance.subscribe('key', handler);
-  return () => unsubscribe();
+  const handler = (value) => { /* handle value */ };
+  store().instance.subscribe('key', handler);
+  return () => {
+    store().instance.unsubscribe('key', handler);
+  };
 }, []);
 ```
 
@@ -581,7 +710,7 @@ git push origin main
 → Missing subscription - use `store().instance.subscribe()` in Render
 
 **Memory leak**
-→ Not returning unsubscribe from useEffect
+→ Not calling `unsubscribe(key, handler)` in useEffect cleanup
 
 ## Project-Specific Context
 
@@ -604,22 +733,51 @@ git push origin main
 
 ## Technical References
 
-**SDK API Documentation:**
-- [Storage API](https://docs.telemetryos.com/docs/storage-methods) - Complete storage scope reference
-- [Platform API](https://docs.telemetryos.com/docs/platform-methods) - Proxy, media, accounts, users, devices
-- [Playlist API](https://docs.telemetryos.com/docs/playlist-methods) - Page navigation methods
-- [Overrides API](https://docs.telemetryos.com/docs/overrides-methods) - Dynamic content control
-- [Client API](https://docs.telemetryos.com/docs/client-methods) - Device client interactions
-- [Media API](https://docs.telemetryos.com/docs/media-methods) - Media content queries
+**Getting Started:**
+- [Quick Start Guide](https://docs.telemetryos.com/docs/quick-start) - Build TelemetryOS applications in minutes
+- [SDK Getting Started](https://docs.telemetryos.com/docs/sdk-getting-started) - Build custom screen applications
+- [Building Applications](https://docs.telemetryos.com/docs/applications) - Build custom web applications for TelemetryOS
+- [Generate New Application](https://docs.telemetryos.com/docs/generate-new-application) - Use the CLI to scaffold projects
 
-**Critical Context:**
-- [CORS Guide](https://docs.telemetryos.com/docs/cors) - Why proxy().fetch() is required
-- [Mount Points](https://docs.telemetryos.com/docs/mount-points) - /render vs /settings execution
-- [Languages Supported](https://docs.telemetryos.com/docs/languages-supported) - Runtime environment constraints
-- [Configuration](https://docs.telemetryos.com/docs/configuration) - telemetry.config.json schema
+**SDK Method Reference:**
+- [SDK Method Reference](https://docs.telemetryos.com/docs/sdk-method-reference) - Complete reference for all SDK methods
+- [Storage Methods](https://docs.telemetryos.com/docs/storage-methods) - Complete storage scope reference
+- [Platform Methods](https://docs.telemetryos.com/docs/platform-methods) - Proxy, media, accounts, users, devices
+- [Media Methods](https://docs.telemetryos.com/docs/media-methods) - Media content queries
+- [Playlist Methods](https://docs.telemetryos.com/docs/playlist-methods) - Page navigation methods
+- [Overrides Methods](https://docs.telemetryos.com/docs/overrides-methods) - Dynamic content control
+- [Proxy Methods](https://docs.telemetryos.com/docs/proxy-methods) - Fetch external content through TelemetryOS proxy
+- [Weather Methods](https://docs.telemetryos.com/docs/weather-methods) - Access weather data and forecasts
+- [Client Methods](https://docs.telemetryos.com/docs/client-methods) - Low-level messaging for advanced use cases
+
+**Application Structure:**
+- [Application Components](https://docs.telemetryos.com/docs/application-components) - Modular pieces of a TelemetryOS application
+- [Mount Points](https://docs.telemetryos.com/docs/mount-points) - /render vs /settings execution contexts
+- [Rendering](https://docs.telemetryos.com/docs/rendering) - Visual component displayed on playlist pages
+- [Settings](https://docs.telemetryos.com/docs/settings) - Configuration UI in Studio side panel
 - [Workers](https://docs.telemetryos.com/docs/workers) - Background JavaScript patterns
 - [Containers](https://docs.telemetryos.com/docs/containers) - Docker integration patterns
+- [Configuration](https://docs.telemetryos.com/docs/configuration) - telemetry.config.json schema
 
-**Code Examples:**
-- [Code Examples](https://docs.telemetryos.com/docs/code-examples) - Real-world implementations
-- [LLMS.txt](https://docs.telemetryos.com/llms.txt) - Complete documentation index
+**Development:**
+- [Local Development](https://docs.telemetryos.com/docs/local-development) - Develop and test locally before deployment
+- [CORS Guide](https://docs.telemetryos.com/docs/cors) - Why proxy().fetch() is required
+- [Code Examples](https://docs.telemetryos.com/docs/code-examples) - Complete working examples
+- [AI-Assisted Development](https://docs.telemetryos.com/docs/ai-assisted-development) - Accelerate development with Claude Code
+- [GitHub Integration](https://docs.telemetryos.com/docs/github-integration) - Automated Git-to-Screen deployment
+
+**Platform Context:**
+- [Offline Capabilities](https://docs.telemetryos.com/docs/offline-capabilities) - How apps run locally on devices
+- [Languages Supported](https://docs.telemetryos.com/docs/languages-supported) - Runtime environment constraints
+- [Use Cases](https://docs.telemetryos.com/docs/use-cases) - Real-world applications and use cases
+- [Platform Architecture](https://docs.telemetryos.com/docs/platform-architecture) - Technical deep dive
+
+**AI & Automation:**
+- [LLMS.txt](https://docs.telemetryos.com/llms.txt) - Complete documentation index for AI agents
+- [MCP Server](https://docs.telemetryos.com/docs/mcp-server) - Model Context Protocol server integration
+- [Using AI with TelemetryOS](https://docs.telemetryos.com/docs/using-ai-with-telemetryos) - AI tools overview
+
+**API Reference (for backend integrations):**
+- [API Introduction](https://docs.telemetryos.com/reference/introduction) - Get started with the TelemetryOS API
+- [Authentication](https://docs.telemetryos.com/reference/authentication) - API security and credentials
+- [API Tokens](https://docs.telemetryos.com/docs/api-tokens) - Token management for programmatic access
