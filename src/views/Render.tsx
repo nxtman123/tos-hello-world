@@ -20,6 +20,7 @@ export function Render() {
     const fetchWeather = async (city?: string) => {
       if (city) {
         weather().getConditions({ city, units: 'metric' }).then((conditions) => {
+          console.log(conditions)
           setWeatherData({
             city: conditions.CityLocalized,
             temp: conditions.Temp,
@@ -31,6 +32,8 @@ export function Render() {
             pressure: conditions.Pressure,
           })
         })
+        weather().getDailyForecast({city, days: 7, units:'metric'}).then(console.log).catch(console.error)
+        weather().getHourlyForecast({city, hours: 12, units:'metric'}).then(console.log).catch(console.error)
       }
     }
 
