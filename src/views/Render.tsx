@@ -32,8 +32,8 @@ export function Render() {
             pressure: conditions.Pressure,
           })
         })
-        weather().getDailyForecast({city, days: 7, units:'metric'}).then(console.log).catch(console.error)
-        weather().getHourlyForecast({city, hours: 12, units:'metric'}).then(console.log).catch(console.error)
+        weather().getDailyForecast({city, units:'metric'}).then(console.log).catch(console.error)
+        weather().getHourlyForecast({city, units:'metric'}).then(console.log).catch(console.error)
       }
     }
 
