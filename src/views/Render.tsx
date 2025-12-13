@@ -1,12 +1,12 @@
 import { store } from '@telemetryos/sdk'
-import { useUiScaleFactorToSetRem } from '@telemetryos/sdk/react'
+import { useUiScaleToSetRem } from '@telemetryos/sdk/react'
 import wordMarkPath from '../../assets/telemetryos-wordmark.svg'
 import { useSubtitleStoreState, useUiScaleStoreState } from '../hooks/store'
 import './Render.css'
 
 export function Render() {
   const [_isUiScaleLoading, uiScale] = useUiScaleStoreState(store().instance)
-  useUiScaleFactorToSetRem(uiScale)
+  useUiScaleToSetRem(uiScale)
   const [isLoading, subtitle] = useSubtitleStoreState(store().instance)
 
   return (
