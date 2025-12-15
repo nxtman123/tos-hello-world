@@ -8,6 +8,7 @@
   padding: 5vmin;
   color: hsl(210 40% 88%);
   background: hsl(212 28% 10%);
+  overflow: hidden;
 }
 
 .render__logo {
