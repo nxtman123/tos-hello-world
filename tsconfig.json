@@ -3,8 +3,12 @@
     "alwaysStrict": true,
     "declaration": true,
     "strict": true,
-    "lib": ["DOM", "ESNext"],
+    "lib": [
+      "DOM",
+      "ESNext"
+    ],
     "target": "ES2019",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -15,5 +19,7 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["./src"]
+  "include": [
+    "./src"
+  ]
 }
